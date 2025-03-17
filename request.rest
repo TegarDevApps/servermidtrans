@@ -1,0 +1,15 @@
+POST http://localhost:5000/create-transaction
+Content-Type: application/json
+
+{
+  "userId": "123",
+  "totalAmount": 100000,
+  "items": [
+    {
+      "id": "item1",
+      "price": 100000,
+      "quantity": 1,
+      "name": "Product A"
+    }
+  ]
+}
