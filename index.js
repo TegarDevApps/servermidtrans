@@ -83,13 +83,23 @@ app.post("/create-transaction", async (req, res) => {
             order_id: orderId,
             redirect_url: response.data.redirect_url 
         });
-    } catch (error) {
-        console.error("Midtrans Error:", error.response?.data || error.message);
+    }
+    catch (error) {
+        console.error("Midtrans Error:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            stack: error.stack, // Tambahkan stack trace untuk debugging
+        });
+    
         res.status(500).json({ 
             error: "Terjadi kesalahan saat memproses transaksi.",
-            details: error.response?.data || error.message
+            message: error.message, // Menampilkan pesan error yang lebih spesifik
+            status: error.response?.status || 500, // Status kode error dari Midtrans
+            details: error.response?.data || "Tidak ada detail tambahan.",
         });
     }
+    
 });
 
 // Jalankan server
