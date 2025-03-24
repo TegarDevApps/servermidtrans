@@ -25,25 +25,50 @@ app.get("/", (req, res) => {
 // Route untuk membuat transaksi
 app.post("/create-transaction", async (req, res) => {
     try {
-        const { userId, totalAmount, items } = req.body;
+        const { userId, totalAmount, paymentType, items } = req.body;
 
         // Validasi input
         if (!userId || !totalAmount || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: "Invalid request data" });
         }
 
+        const orderId = `ORDER-${Date.now()}`;
+        
+        // Buat payload transaksi dasar
         const transactionDetails = {
             transaction_details: {
-                order_id: `ORDER-${Date.now()}`,
+                order_id: orderId,
                 gross_amount: totalAmount
             },
-            item_details: items,
+            item_details: items.map(item => ({
+                id: item.id,
+                price: item.price,
+                quantity: item.quantity,
+                name: item.name
+            })),
             customer_details: {
                 email: `${userId}@email.com`,
                 first_name: "User",
                 last_name: "Ecommerce"
             }
         };
+
+        // Tambahkan enabled_payments berdasarkan payment_type yang dipilih
+        if (paymentType) {
+            // Map payment types dari UI ke enabled_payments Midtrans
+            const paymentMethodMapping = {
+                'credit_card': ['credit_card'],
+                'bank_transfer': ['bca_va', 'bni_va', 'bri_va', 'mandiri_va', 'permata_va'],
+                'e_wallet': ['gopay', 'shopeepay', 'qris', 'dana'],
+                'convenience_store': ['indomaret', 'alfamart']
+            };
+
+            const enabledPayments = paymentMethodMapping[paymentType] || [];
+            
+            if (enabledPayments.length > 0) {
+                transactionDetails.enabled_payments = enabledPayments;
+            }
+        }
 
         // Request ke Midtrans
         const response = await axios.post(MIDTRANS_API_URL, transactionDetails, {
@@ -53,10 +78,17 @@ app.post("/create-transaction", async (req, res) => {
             }
         });
 
-        res.json({ snap_token: response.data.token, order_id: transactionDetails.transaction_details.order_id });
+        res.json({ 
+            snap_token: response.data.token, 
+            order_id: orderId,
+            redirect_url: response.data.redirect_url 
+        });
     } catch (error) {
         console.error("Midtrans Error:", error.response?.data || error.message);
-        res.status(500).json({ error: "Terjadi kesalahan saat memproses transaksi." });
+        res.status(500).json({ 
+            error: "Terjadi kesalahan saat memproses transaksi.",
+            details: error.response?.data || error.message
+        });
     }
 });
 
