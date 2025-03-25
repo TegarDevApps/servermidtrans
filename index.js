@@ -48,10 +48,22 @@ app.post("/create-transaction", async (req, res) => {
             });
         }
 
-        if (!totalAmount || totalAmount <= 0) {
+        // Validasi dan hitung ulang total amount
+        const calculatedTotal = items.reduce((sum, item) => 
+            sum + (Math.round(item.price) * item.quantity), 0);
+
+        console.log("Received Total Amount:", totalAmount);
+        console.log("Calculated Total Amount:", calculatedTotal);
+
+        // Validasi total amount
+        if (Math.round(totalAmount) !== calculatedTotal) {
+            console.error("Total amount mismatch", {
+                receivedTotal: totalAmount,
+                calculatedTotal: calculatedTotal
+            });
             return res.status(400).json({ 
-                error: "Invalid total amount",
-                details: `Total amount tidak valid: ${totalAmount}`
+                error: "Total amount tidak sesuai dengan item",
+                details: `Total diterima: ${totalAmount}, Total dihitung: ${calculatedTotal}`
             });
         }
 
