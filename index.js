@@ -8,14 +8,10 @@ const app = express();
 
 // Konfigurasi CORS dengan opsi yang lebih spesifik
 app.use(cors({
-  origin: [
-    'http://localhost:*',  // Untuk pengembangan lokal
-    'https://midtransserver.vercel.app', // Domain server
-    'https://your-flutter-app-domain.com', // Domain aplikasi Flutter Anda
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    origin: true, // Mengizinkan semua origin
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
 
 // Middleware untuk parsing JSON
 app.use(express.json());
