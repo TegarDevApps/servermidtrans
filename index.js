@@ -5,8 +5,20 @@ const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
+
+// Konfigurasi CORS dengan opsi yang lebih spesifik
+app.use(cors({
+  origin: [
+    'http://localhost:*',  // Untuk pengembangan lokal
+    'https://midtransserver.vercel.app', // Domain server
+    'https://your-flutter-app-domain.com', // Domain aplikasi Flutter Anda
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Middleware untuk parsing JSON
 app.use(express.json());
-app.use(cors());
 
 const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
 const MIDTRANS_API_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions";
@@ -24,25 +36,47 @@ app.get("/", (req, res) => {
 
 // Route untuk membuat transaksi
 app.post("/create-transaction", async (req, res) => {
+    console.log("Incoming Transaction Request:", {
+        body: req.body,
+        headers: req.headers
+    });
+
     try {
         const { userId, totalAmount, paymentType, items } = req.body;
 
-        // Validasi input
-        if (!userId || !totalAmount || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ error: "Invalid request data" });
+        // Validasi input yang lebih komprehensif
+        if (!userId) {
+            return res.status(400).json({ 
+                error: "User ID is required",
+                details: "Tidak ada user ID yang diberikan"
+            });
+        }
+
+        if (!totalAmount || totalAmount <= 0) {
+            return res.status(400).json({ 
+                error: "Invalid total amount",
+                details: `Total amount tidak valid: ${totalAmount}`
+            });
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ 
+                error: "Invalid or empty items list",
+                details: "Daftar item kosong atau tidak valid"
+            });
         }
 
         const orderId = `ORDER-${Date.now()}`;
         
-        // Buat payload transaksi dasar
+        // Payload transaksi
         const transactionDetails = {
             transaction_details: {
                 order_id: orderId,
-                gross_amount: totalAmount
+                gross_amount: Math.round(totalAmount)
             },
             item_details: items.map(item => ({
                 id: item.id,
-                price: item.price,
+                price: Math.round(item.price),
                 quantity: item.quantity,
                 name: item.name
             })),
@@ -53,9 +87,8 @@ app.post("/create-transaction", async (req, res) => {
             }
         };
 
-        // Tambahkan enabled_payments berdasarkan payment_type yang dipilih
+        // Tambahkan enabled_payments
         if (paymentType) {
-            // Map payment types dari UI ke enabled_payments Midtrans
             const paymentMethodMapping = {
                 'credit_card': ['credit_card'],
                 'bank_transfer': ['bca_va', 'bni_va', 'bri_va', 'mandiri_va', 'permata_va'],
@@ -85,21 +118,33 @@ app.post("/create-transaction", async (req, res) => {
         });
     }
     catch (error) {
-        console.error("Midtrans Error:", {
+        // Log error secara mendetail
+        console.error("Comprehensive Midtrans Error:", {
+            name: error.name,
             message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-            stack: error.stack, // Tambahkan stack trace untuk debugging
+            responseStatus: error.response?.status,
+            responseData: error.response?.data
         });
     
+        // Kirim response error yang informatif
         res.status(500).json({ 
-            error: "Terjadi kesalahan saat memproses transaksi.",
-            message: error.message, // Menampilkan pesan error yang lebih spesifik
-            status: error.response?.status || 500, // Status kode error dari Midtrans
-            details: error.response?.data || "Tidak ada detail tambahan.",
+            error: "Terjadi kesalahan saat memproses transaksi",
+            details: {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            }
         });
     }
-    
+});
+
+// Tambahkan error handler global
+app.use((err, req, res, next) => {
+    console.error("Unhandled Error:", err);
+    res.status(500).json({
+        error: "Terjadi kesalahan server",
+        details: err.message
+    });
 });
 
 // Jalankan server
