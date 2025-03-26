@@ -55,8 +55,11 @@ app.post("/create-transaction", async (req, res) => {
         console.log("Received Total Amount:", totalAmount);
         console.log("Calculated Total Amount:", calculatedTotal);
 
-        // Validasi total amount
-        if (Math.abs(Math.round(totalAmount) - calculatedTotal) > 1) {
+        // Toleransi selisih kecil untuk perhitungan
+        const TOLERANCE = 100; // Toleransi 100 rupiah
+
+        // Validasi total amount dengan toleransi
+        if (Math.abs(totalAmount - calculatedTotal) > TOLERANCE) {
             console.error("Total amount mismatch", {
                 receivedTotal: totalAmount,
                 calculatedTotal: calculatedTotal
@@ -80,7 +83,7 @@ app.post("/create-transaction", async (req, res) => {
         const transactionDetails = {
             transaction_details: {
                 order_id: orderId,
-                gross_amount: Math.round(totalAmount)  // Ensure this is an integer
+                gross_amount: Math.round(totalAmount)
             },
             item_details: items.map(item => ({
                 id: item.id,
@@ -111,7 +114,7 @@ app.post("/create-transaction", async (req, res) => {
             }
         }
 
-        // Request ke Midtrans
+         // Request ke Midtrans
         const response = await axios.post(MIDTRANS_API_URL, transactionDetails, {
             headers: {
                 "Content-Type": "application/json",
