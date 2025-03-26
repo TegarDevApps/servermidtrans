@@ -56,7 +56,7 @@ app.post("/create-transaction", async (req, res) => {
         console.log("Calculated Total Amount:", calculatedTotal);
 
         // Validasi total amount
-        if (Math.round(totalAmount) !== calculatedTotal) {
+        if (Math.abs(Math.round(totalAmount) - calculatedTotal) > 1) {
             console.error("Total amount mismatch", {
                 receivedTotal: totalAmount,
                 calculatedTotal: calculatedTotal
@@ -80,7 +80,7 @@ app.post("/create-transaction", async (req, res) => {
         const transactionDetails = {
             transaction_details: {
                 order_id: orderId,
-                gross_amount: Math.round(totalAmount)
+                gross_amount: Math.round(totalAmount)  // Ensure this is an integer
             },
             item_details: items.map(item => ({
                 id: item.id,
